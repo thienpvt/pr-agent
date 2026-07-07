@@ -50,6 +50,11 @@ class LiteLLMAIHandler(BaseAiHandler):
 
         if get_settings().get("LITELLM.DISABLE_AIOHTTP", False):
             litellm.disable_aiohttp_transport = True
+        # Silence litellm's raw "Provider List: ..." banner. It is print()-ed (not logged) from
+        # litellm's internal cost/token accounting whenever an empty model string reaches
+        # get_llm_provider(), which happens even on fully successful calls and is misleading noise.
+        if get_settings().get("LITELLM.SUPPRESS_PROVIDER_DEBUG_INFO", True):
+            litellm.suppress_debug_info = True
         if get_settings().get("OPENAI.KEY", None):
             openai.api_key = get_settings().openai.key
             litellm.openai_key = get_settings().openai.key
