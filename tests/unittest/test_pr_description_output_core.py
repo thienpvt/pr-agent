@@ -390,6 +390,16 @@ class TestProcessPRFilesPrediction:
 
         assert "<details><summary>2 files</summary>" in body
 
+    @patch("pr_agent.tools.pr_description.get_settings")
+    def test_none_value_returns_body_without_partial_table(self, mock_get_settings):
+        mock_get_settings.return_value = _settings()
+        obj = self._obj(gfm=True)
+
+        body, comments = obj.process_pr_files_prediction("PRE", None)
+
+        assert body == "PRE"
+        assert comments == []
+
 
 # ---------------------------------------------------------------------------
 # Round-trip: process_description recovers structured files from rendering

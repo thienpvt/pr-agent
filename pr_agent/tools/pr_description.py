@@ -993,12 +993,14 @@ class PRDescription:
 
     def process_pr_files_prediction(self, pr_body, value):
         pr_comments = []
+        if not isinstance(value, dict):
+            return pr_body, pr_comments
+
         # logic for using collapsible file list
         use_collapsible_file_list = get_settings().pr_description.collapsible_file_list
         num_files = 0
-        if value:
-            for semantic_label in value.keys():
-                num_files += len(value[semantic_label])
+        for semantic_label in value.keys():
+            num_files += len(value[semantic_label])
         if use_collapsible_file_list == "adaptive":
             use_collapsible_file_list = num_files > self.COLLAPSIBLE_FILE_LIST_THRESHOLD
 
