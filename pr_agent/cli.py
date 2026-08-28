@@ -4,6 +4,9 @@ import os
 import sys
 
 from pr_agent.agent.pr_agent import PRAgent, commands
+from pr_agent.algo.ai_handlers.litellm_helpers import (
+    DEFAULT_CALLBACK_TIMEOUT_SECONDS, drain_litellm_callbacks,
+    litellm_callbacks_registered)
 from pr_agent.algo.utils import get_version
 from pr_agent.config_loader import get_settings
 from pr_agent.log import get_logger, setup_logger
@@ -42,7 +45,7 @@ def set_parser():
     - add_docs
 
     - generate_labels
-    
+
     - help_docs - Ask a question, from either an issue or PR context, on a given repo (current context or a different one)
 
 
@@ -72,6 +75,8 @@ def set_parser():
                         help="Read a unified diff from stdin (plain-diff local mode)")
     parser.add_argument("--output", dest="output", type=str, default=None,
                         help="Write the result to this file (in addition to stdout)")
+    parser.add_argument("--json-output", dest="json_output", type=str, default=None,
+                        help="Write the parsed review and token usage to this JSON file")
     parser.add_argument('command', type=str, help='The', choices=commands, default='review')
     parser.add_argument('rest', nargs=argparse.REMAINDER, default=[])
     return parser
@@ -91,6 +96,8 @@ def run(inargs=None, args=None):
     if not args:
         args = parser.parse_args(inargs)
     diff_mode = getattr(args, "stdin", False) or getattr(args, "diff_file", None)
+    if getattr(args, "json_output", None) and not diff_mode:
+        parser.error("--json-output is only supported in plain-diff mode (--stdin or --diff-file)")
     if diff_mode:
         if args.stdin and args.diff_file:
             parser.error("--stdin and --diff-file are mutually exclusive")
@@ -109,6 +116,7 @@ def run(inargs=None, args=None):
         get_settings().set("config.git_provider", "plain-diff")
         get_settings().set("plain_diff.content", diff_content)
         get_settings().set("plain_diff.output_path", getattr(args, "output", None))
+        get_settings().set("plain_diff.json_output_path", getattr(args, "json_output", None))
         # Plain-diff mode's whole purpose is to emit the result to stdout/--output, so
         # force publishing on even if a config/env set publish_output=false.
         get_settings().set("config.publish_output", True)
@@ -138,16 +146,14 @@ def run(inargs=None, args=None):
             target = args.pr_url if args.pr_url else "local_diff"
             result = await asyncio.create_task(PRAgent().handle_request(target, [command] + args.rest))
 
-        if get_settings().litellm.get("enable_callbacks", False):
-            # There may be additional events on the event queue from the run above. If there are give them time to complete.
+        # litellm defers its success/failure callbacks onto the event loop, which
+        # asyncio.run() below tears down the moment this coroutine returns. Give
+        # them a chance to run first, or they are silently dropped.
+        if litellm_callbacks_registered():
             get_logger().debug("Waiting for event queue to complete")
-            tasks = [task for task in asyncio.all_tasks() if task is not asyncio.current_task()]
-            if tasks:
-                _, pending = await asyncio.wait(tasks, timeout=30)
-                if pending:
-                    get_logger().warning(
-                        f"{len(pending)} callback tasks({[task.get_coro() for task in pending]}) did not complete within timeout"
-                    )
+            await drain_litellm_callbacks(
+                get_settings().litellm.get("callback_timeout_seconds", DEFAULT_CALLBACK_TIMEOUT_SECONDS)
+            )
 
         return result
 
