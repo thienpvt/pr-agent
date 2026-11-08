@@ -35,6 +35,12 @@ def get_config_branch() -> str:
 
 
 MAX_FILES_ALLOWED_FULL = 50
+_ORG_TEMPLATE_START = "<!-- pr_agent:org_template:start -->"
+_ORG_TEMPLATE_END = "<!-- pr_agent:org_template:end -->"
+_ORG_TEMPLATE_RE = re.compile(
+    rf"{re.escape(_ORG_TEMPLATE_START)}.*?{re.escape(_ORG_TEMPLATE_END)}",
+    re.DOTALL,
+)
 
 
 class IncompletePullRequestFilesError(RuntimeError):
@@ -469,6 +475,7 @@ class GitProvider(ABC):
             return self.user_description
 
         description = (self.get_pr_description_full() or "").strip()
+        description = _ORG_TEMPLATE_RE.sub("", description).strip()
         description_lowercase = description.lower()
         get_logger().debug("Existing description", description=description_lowercase)
 
@@ -529,6 +536,9 @@ class GitProvider(ABC):
         if '<!-- pr-agent-generated -->' in description_lowercase:
             return True
         possible_headers = self._possible_headers()
+        # Fork: recognize org template start marker as pr-agent output.
+        if description_lowercase.startswith(_ORG_TEMPLATE_START):
+            return True
         # For headers unique to pr-agent, tolerate leading content (the ratchet
         # case from #2633: a description like "Fixes #42\n### **PR Type**" should
         # still be recognized as pr-agent output).
