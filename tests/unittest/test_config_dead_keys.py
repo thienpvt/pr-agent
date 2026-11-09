@@ -123,6 +123,23 @@ _ALLOWLIST = {
         "pr_description",
         "pr_diagram_direction_threshold",
     ): "description_settings.pr_diagram_direction_threshold in pr_agent/tools/pr_description.py",
+    # Fork org-MR toggles read through the _fork_toggle(key) helper, which indexes the
+    # section by variable: s.pr_description.get(key, default) in pr_agent/tools/pr_description.py
+    (
+        "pr_description",
+        "enable_conventional_title",
+    ): "_fork_toggle('enable_conventional_title') -> s.pr_description.get(key, default) in "
+    "pr_agent/tools/pr_description.py",
+    (
+        "pr_description",
+        "enable_org_template",
+    ): "_fork_toggle('enable_org_template') -> s.pr_description.get(key, default) in "
+    "pr_agent/tools/pr_description.py",
+    (
+        "pr_description",
+        "enable_pr_agent_output",
+    ): "_fork_toggle('enable_pr_agent_output') -> s.pr_description.get(key, default) in "
+    "pr_agent/tools/pr_description.py",
     # [push_outputs] read as cfg = get_settings().get("push_outputs", {}) or {}
     (
         "push_outputs",

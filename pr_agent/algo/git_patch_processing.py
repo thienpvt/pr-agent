@@ -98,6 +98,14 @@ def process_patch_lines(patch_str, original_file_str, patch_extra_lines_before, 
 
                     section_header, size1, size2, start1, start2 = extract_hunk_headers(match)
 
+                    # Shift a zero-length side (a pure insertion or deletion, as in `git diff -U0`) by one line:
+                    # its header numbers the line *before* the change.
+                    header_start1, header_start2 = start1, start2
+                    if size1 == 0:
+                        start1 += 1
+                    if size2 == 0:
+                        start2 += 1
+
                     is_valid_hunk = check_if_hunk_lines_matches_to_file(i, file_original_lines, patch_lines, start1)
 
                     if is_valid_hunk and (patch_extra_lines_before > 0 or patch_extra_lines_after > 0):
@@ -181,6 +189,11 @@ def process_patch_lines(patch_str, original_file_str, patch_extra_lines_before, 
                         extended_start2 = start2
                         extended_size2 = size2
                         delta_lines_original = []
+                    # Keep the original header numbering for a hunk that is still zero-length after extension
+                    if extended_size1 == 0:
+                        extended_start1 = header_start1
+                    if extended_size2 == 0:
+                        extended_start2 = header_start2
                     extended_patch_lines.append('')
                     extended_patch_lines.append(
                         f'@@ -{extended_start1},{extended_size1} '
@@ -449,6 +462,12 @@ def extract_hunk_lines_from_patch(patch: str, file_name, line_start, line_end, s
             line_end = int(line_end)
         except (ValueError, TypeError):
             get_logger().warning(f"Ignoring invalid line_end {line_end!r} for '{file_name}'")
+            # A missing end (e.g. /ask_line --line_start only) means "this line only";
+            # -1 would fail the overlap predicate and skip every hunk.
+            line_end = line_start
+        if line_start < 0:
+            # No usable start: keep the pre-existing "no hunk matches" outcome even
+            # when a valid end was supplied.
             line_end = -1
         patch_with_lines_str = f"\n\n## File: '{file_name.strip()}'\n\n"
         selected_lines = ""
@@ -474,14 +493,14 @@ def extract_hunk_lines_from_patch(patch: str, file_name, line_start, line_end, s
 
                 section_header, size1, size2, start1, start2 = extract_hunk_headers(match)
 
-                # check if line range is in this hunk
+                # keep every hunk that overlaps the requested line range, so a
+                # range spanning multiple hunks is not silently truncated
                 if side.lower() == 'left':
-                    # check if line range is in this hunk
-                    if not (start1 <= line_start <= start1 + size1 - 1):
+                    if not (size1 > 0 and line_end >= start1 and line_start <= start1 + size1 - 1):
                         skip_hunk = True
                         continue
                 elif side.lower() == 'right':
-                    if not (start2 <= line_start <= start2 + size2 - 1):
+                    if not (size2 > 0 and line_end >= start2 and line_start <= start2 + size2 - 1):
                         skip_hunk = True
                         continue
                 patch_with_lines_str += f'\n{header_line}\n'

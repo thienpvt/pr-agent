@@ -260,3 +260,36 @@ class TestOmittedHunkCount:
                  "@@ -20,3 +20,3 @@\n ctx20\n-old21\n+new21\n ctx22")
         full, _ = extract_hunk_lines_from_patch(patch, "f.py", 13, 13, "right")
         assert "@@ -10,1 +12 @@" not in full
+
+
+class TestExtendPatchZeroLengthHunks:
+    """`git diff -U0` numbers the line *before* a pure insertion or deletion."""
+
+    ORIGINAL = 'a\nb\nc\nd\ne\nf\n'
+
+    def test_pure_insertion_extended_both_sides(self):
+        # Use the `git diff -U0` output after inserting X between c and d
+        new_file = 'a\nb\nc\nX\nd\ne\nf\n'
+        actual = extend_patch(self.ORIGINAL, '@@ -3,0 +4 @@\n+X', patch_extra_lines_before=1,
+                              patch_extra_lines_after=1, filename='f.py', new_file_str=new_file)
+        assert actual == '\n@@ -3,2 +3,3 @@ \n c\n+X\n d'
+
+    def test_pure_deletion_extended_both_sides(self):
+        # Use the `git diff -U0` output after deleting c and d
+        new_file = 'a\nb\ne\nf\n'
+        actual = extend_patch(self.ORIGINAL, '@@ -3,2 +2,0 @@\n-c\n-d', patch_extra_lines_before=1,
+                              patch_extra_lines_after=1, filename='f.py', new_file_str=new_file)
+        assert actual == '\n@@ -2,4 +2,2 @@ \n b\n-c\n-d\n e'
+
+    def test_pure_insertion_extended_after_only(self):
+        new_file = 'a\nb\nc\nX\nd\ne\nf\n'
+        actual = extend_patch(self.ORIGINAL, '@@ -3,0 +4 @@\n+X', patch_extra_lines_before=0,
+                              patch_extra_lines_after=2, filename='f.py', new_file_str=new_file)
+        assert actual == '\n@@ -4,2 +4,3 @@ \n+X\n d\n e'
+
+    def test_pure_insertion_at_end_of_file_keeps_header(self):
+        # Keep the header as it was: nothing can be added after the last line
+        new_file = 'a\nb\nc\nd\ne\nf\nX\n'
+        actual = extend_patch(self.ORIGINAL, '@@ -6,0 +7 @@\n+X', patch_extra_lines_before=0,
+                              patch_extra_lines_after=2, filename='f.py', new_file_str=new_file)
+        assert actual == '\n@@ -6,0 +7,1 @@ \n+X'

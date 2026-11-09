@@ -186,6 +186,25 @@ class TestExtractHunkLinesFromPatch:
         )
         assert selected == "-line2\n+line2_new\n+line2b"
 
+    def test_right_side_range_spanning_multiple_hunks(self):
+        # Range 2..12 crosses the first hunk (new lines 1..4) and the second
+        # hunk (new lines 11..13); both must contribute lines.
+        full, selected = extract_hunk_lines_from_patch(
+            MULTI_HUNK_PATCH, "src/sample.py", line_start=2, line_end=12, side="right"
+        )
+        assert "@@ -1,3 +1,4 @@" in full
+        assert "@@ -10,3 +11,3 @@" in full
+        assert selected == "-line2\n+line2_new\n+line2b\n line3\n ctx_a\n-removed\n+added"
+
+    def test_left_side_range_spanning_multiple_hunks(self):
+        # Old-file numbering covers lines 1..3 and 10..12 across the two hunks.
+        full, selected = extract_hunk_lines_from_patch(
+            MULTI_HUNK_PATCH, "src/sample.py", line_start=2, line_end=12, side="left"
+        )
+        assert "@@ -1,3 +1,4 @@" in full
+        assert "@@ -10,3 +11,3 @@" in full
+        assert selected == "-line2\n line3\n ctx_a\n-removed\n ctx_b"
+
     def test_left_side_selects_from_old_line_numbers(self):
         # Old file numbering in first hunk starts at 1; "-line2" is old-line 2.
         full, selected = extract_hunk_lines_from_patch(
@@ -245,6 +264,16 @@ class TestExtractHunkLinesFromPatch:
         )
         assert "## File: 'src/sample.py'" in full
         assert selected == ""
+
+    def test_missing_line_end_does_not_drop_every_hunk(self):
+        # /ask_line --line_start=2 without --line_end: the settings default is ''
+        # (coerced to -1), so a missing end must not skip every hunk the way an
+        # explicit out-of-range end does.
+        full, selected = extract_hunk_lines_from_patch(
+            MULTI_HUNK_PATCH, "src/sample.py", line_start=2, line_end="", side="right"
+        )
+        assert "@@ -1,3 +1,4 @@" in full
+        assert selected == "-line2\n+line2_new"
 
     def test_string_line_params_are_coerced_to_int(self):
         full_str, sel_str = extract_hunk_lines_from_patch(
