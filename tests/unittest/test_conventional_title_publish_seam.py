@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from pr_agent.tools import pr_description as pr_description_module
-from pr_agent.tools.pr_description import PRDescription, _ANGULAR_TITLE_INSTRUCTIONS
+from pr_agent.tools.pr_description import _ANGULAR_TITLE_INSTRUCTIONS, PRDescription
 
 _MISSING = object()
 
@@ -64,7 +64,7 @@ def _make_instance(*, ai_title=_MISSING, pr_title: str) -> PRDescription:
     obj.git_provider = MagicMock()
     obj.git_provider.is_supported.return_value = False
     obj._prepare_data = MagicMock()
-    obj._prepare_pr_answer = MagicMock(return_value=(pr_title, "body", "", []))
+    obj._prepare_pr_answer = MagicMock(return_value=(pr_title, "body", ""))
     return obj
 
 
@@ -196,7 +196,9 @@ async def test_conventional_title_missing_or_malformed_ai_title_publishes_body_w
     await obj.run()
 
     assert obj.git_provider.publish_description.call_args[0][0] is None
-    assert obj.git_provider.publish_description.call_args[0][1].startswith("body")
+    # Upstream prepends the <!-- pr-agent-generated --> recognition marker to the
+    # published body; the fork body itself must still be published unchanged.
+    assert obj.git_provider.publish_description.call_args[0][1].startswith("<!-- pr-agent-generated -->\nbody")
 
 
 @pytest.mark.parametrize("ai_title", [_MISSING, "", ["bad"]])

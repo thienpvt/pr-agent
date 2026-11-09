@@ -51,7 +51,7 @@ to-do list.
 | `extra_config_url` | "" | optional URL or path to an additional .pr_agent.toml merged before the repo-local config; also settable via --extra_config_url or PR_AGENT_EXTRA_CONFIG_URL. See docs/docs/usage-guide/configuration_options.md#external-configuration-url. |
 | `disable_auto_feedback` | false |  |
 | `enable_auto_approval` | false | when true, /review may auto-approve a PR via auto_approve_logic(); that caller is currently commented out |
-| `ai_timeout` | 120 | 2 minutes |
+| `ai_timeout` | 600 | 10 minutes (reasoning models can take ~6 min/call; 2 min caused false timeouts) |
 | `retry_same_model_on_timeout` | true | when false, a timed-out call is not retried on the same model and moves on to fallback_models |
 | `skip_keys` | [] |  |
 | `custom_reasoning_model` | false | when true, disables system messages and temperature controls for models that don't support chat-style inputs |
@@ -221,6 +221,9 @@ to-do list.
 | `include_generated_by_header` | true |  |
 | `max_ai_calls` | 4 |  |
 | `async_ai_calls` | true |  |
+| `enable_conventional_title` | false | --- fork: org MR enhancements (default off; see docs/fork/org-mr-enhancements.md) --- |
+| `enable_org_template` | false |  |
+| `enable_pr_agent_output` | false | when false + enable_org_template=true, suppress PR-Agent's default '## PR Description' body (walkthrough/diagram still render inside the org template's '## Changes' section) |
 
 
 ## `[pr_questions]` — /ask
@@ -419,6 +422,7 @@ _This section only documents commented-out examples; see the [TOML source](https
 
 | Key | Default | Description |
 | --- | --- | --- |
+| `suppress_provider_debug_info` | true | silence litellm's raw "Provider List:" banner, printed from internal cost/token accounting even on successful calls |
 | `enable_callbacks` | false |  |
 | `success_callback` | [] |  |
 | `failure_callback` | [] |  |
@@ -438,8 +442,8 @@ _This section only documents commented-out examples; see the [TOML source](https
 | `provider_only` | [] | restrict routing to these upstream providers only, a hard allowlist (e.g. ["z-ai"]); empty = OpenRouter default routing |
 | `provider_order` | [] | preferred provider order; ignored when provider_only is set; empty = unset |
 | `allow_fallbacks` | true | when provider_order is set, allow routing beyond the listed providers |
-| `reasoning_effort` | "" | Invalid reasoning_effort values are warned about and treated as unset. Empty inherits config.reasoning_effort for reasoning-capable models (probed against litellm's bundled reasoning metadata or the Grok registry, or listed in additional_reasoning_effort_models). Valid values: "none", "minimal", "low", "medium", "high", "xhigh", "max". OpenRouter normalizes "max" to "xhigh" for LiteLLM/OpenRouter compatibility. Model-specific support varies; mandatory reasoning models reject "none". |
-| `reasoning_max_tokens` | 0 | A positive value overrides global effort and non-none OpenRouter-specific efforts. Explicit openrouter.reasoning_effort = "none" keeps reasoning disabled, except on Grok 4.5/4.6: there "none" is clamped to the lowest supported effort first, so a positive budget wins over it. Some providers require max_tokens to be greater than the reasoning budget. |
+| `reasoning_effort` | "" | Invalid reasoning_effort values are warned about and treated as unset. Empty inherits config.reasoning_effort for reasoning-capable models (probed against litellm's bundled reasoning metadata or the Grok registry, or listed in additional_reasoning_effort_models). Valid values: "none", "minimal", "low", "medium", "high", "xhigh", "max". OpenRouter normalizes "max" to "xhigh" to match LiteLLM 1.98.0. Model-specific support varies; mandatory reasoning models reject "none". |
+| `reasoning_max_tokens` | 0 | A positive value overrides global effort and non-none OpenRouter-specific efforts. Explicit openrouter.reasoning_effort = "none" keeps reasoning disabled. Some providers require max_tokens to be greater than the reasoning budget. |
 | `max_tokens` | 0 | hard cap on completion tokens for the request; 0 = unset |
 
 

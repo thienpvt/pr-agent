@@ -105,7 +105,7 @@ class TestByteIdenticalWhenToggleOff:
         assert pd.get("enable_conventional_title", False) is False
         assert pd.get("enable_org_template", False) is False
 
-        title, pr_body, changes_walkthrough, pr_file_changes = obj._prepare_pr_answer()
+        title, pr_body, changes_walkthrough = obj._prepare_pr_answer()
 
         # Golden literals — captured from upstream `_prepare_pr_answer` output
         # for the exact pinned input above. Any drift here means fork behavior
@@ -131,7 +131,6 @@ class TestByteIdenticalWhenToggleOff:
         )
         # No walkthrough path exercised (no pr_files in data, no gfm).
         assert changes_walkthrough == ""
-        assert pr_file_changes == []
 
 
 class TestForkSeamsAreToggleGatedOrInert:

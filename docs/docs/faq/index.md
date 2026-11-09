@@ -42,7 +42,7 @@ ___
 ??? note "Q: How can I get more tailored suggestions?"
     #### Answer:<span style="display:none;">3</span>
 
-    See [here](../tools/improve.md#extra-instructions-and-best-practices) for more information on how to use the `extra_instructions` and `best_practices` configuration options, to guide the model to more tailored suggestions.
+    See [here](../tools/improve.md#extra-instructions-and-best-practices) for more information on how to use `extra_instructions` and provide best-practices files via `config.repo_context_files`, to guide the model to more tailored suggestions.
 
 ___
 
