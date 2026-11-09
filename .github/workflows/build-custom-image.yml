@@ -3,7 +3,7 @@ name: Build custom image
 on:
   push:
     branches:
-      - gsd/v1.0-milestone
+      - main
   workflow_dispatch:
     inputs:
       target:
